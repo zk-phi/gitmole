@@ -39,24 +39,33 @@
 (defconst gitmole--blame-format-regexp
   "^\\(\\^?\\)\\([0-9a-f]+\\) \\(?:[^(]+ \\)?(\\(.*[^ ]\\) +\\([-0-9]+\\) \\([:0-9]+ [-+][0-9]+\\) +\\([0-9]+\\)) \\(.*\\)$")
 
-(defun gitmole--parse-line (line)
-  (unless (string-match gitmole--blame-format-regexp line)
-    (error "Unexpected error parsing \"%s\"." line))
-  (let* ((object-id (match-string 2 line))
-         ;; (is-initial (match-string 1 line))
-         (body (match-string 7 line))
-         ;; (lineno (match-string 6 line))
-         (username (match-string 3 line))
-         (date (match-string 4 line))
-         (time (match-string 5 line))
-         (elapsed-days (floor (/ (float-time (time-since (concat date " " time))) 60 60 24))))
-    (vector (propertize
-             (concat body "\n")
-             'gitmole-revision object-id)
-            (propertize
-             (format "%s %-10s" date (gitmole--abbrev-str username 10))
-             'face `(:foreground ,(gitmole--make-fg-color elapsed-days) :overline t))
-            object-id)))
+(defun gitmole--parse-lines (output)
+  (with-temp-buffer
+    (insert output)
+    (goto-char (point-min))
+    (let (res)
+      (while (search-forward-regexp "^\\([0-9a-f]+\\) " nil t)
+        (let* ((revision (match-string 1))
+               (author (and (search-forward-regexp "^author \\(.*\\)$")
+                            (match-string 1)))
+               (time (and (search-forward-regexp "^author-time \\([0-9]+\\)$")
+                          (seconds-to-time (string-to-number (match-string 1)))))
+               (elapsed-days (floor (/ (float-time (time-since time)) 60 60 24)))
+               (message (and (search-forward-regexp "^summary \\(.*\\)$")
+                             (match-string 1)))
+               (body (and (search-forward-regexp "^\t\\(.*\\)$")
+                          (match-string 1)))
+               (date-str (format-time-string "%Y/%m/%d" time)))
+         (push (vector
+                (propertize
+                 (concat body "\n")
+                 'gitmole-revision revision)
+                (propertize
+                 (format "%s %-10s" date-str (gitmole--abbrev-str author 10))
+                 'face `(:foreground ,(gitmole--make-fg-color elapsed-days) :overline t))
+                revision)
+               res)))
+      (nreverse res))))
 
 (defvar-local gitmole--file-name nil)
 
@@ -73,9 +82,8 @@
     (let* ((default-directory (file-name-directory file))
            (revision (or revision (get-text-property (point) 'gitmole-revision)))
            (revision (if revision (concat revision "^") "HEAD"))
-           (command (format "git blame %s -- %s" revision file))
-           (lines (split-string (shell-command-to-string command) "\n" t))
-           (parsed-lines (mapcar 'gitmole--parse-line lines))
+           (command (format "git blame --line-porcelain %s -- %s" revision file))
+           (parsed-lines (gitmole--parse-lines (shell-command-to-string command)))
            (header (shell-command-to-string (format "git log --oneline %s^..%s" revision revision)))
            last-revision)
       (switch-to-buffer (get-buffer-create "*Git Blame*"))
