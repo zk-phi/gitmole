@@ -59,7 +59,8 @@
          (push (vector
                 (propertize
                  (concat body "\n")
-                 'gitmole-revision revision)
+                 'gitmole-revision revision
+                 'gitmole-header (concat (gitmole--abbrev-str revision 8) " " message))
                 (propertize
                  (format "%s %-10s" date-str (gitmole--abbrev-str author 10))
                  'face `(:foreground ,(gitmole--make-fg-color elapsed-days) :overline t))
@@ -70,6 +71,9 @@
 (defvar-local gitmole--file-name nil)
 
 ;; ---- entrypoint
+
+(defun git-mole--update-header-line-format ()
+  (setq header-line-format (or (get-text-property (point) 'gitmole-header) "")))
 
 (defun gitmole-interactive-blame (&optional revision)
   (interactive)
@@ -84,7 +88,6 @@
            (revision (if revision (concat revision "^") "HEAD"))
            (command (format "git blame --line-porcelain %s -- %s" revision file))
            (parsed-lines (gitmole--parse-lines (shell-command-to-string command)))
-           (header (shell-command-to-string (format "git log --oneline %s^..%s" revision revision)))
            last-revision)
       (switch-to-buffer (get-buffer-create "*Git Blame*"))
       (read-only-mode 0)
@@ -106,10 +109,11 @@
              (aref line 1)))
           (forward-line 1)))
       (setq gitmole--file-name file
-            default-directory     (file-name-directory file)
-            header-line-format    (string-trim header))
+            default-directory  (file-name-directory file))
       (read-only-mode 1)
       (forward-line lineno)
-      (recenter))))
+      (recenter)
+      (git-mole--update-header-line-format)
+      (add-hook 'post-command-hook 'git-mole--update-header-line-format nil t))))
 
 (provide 'gitmole)
