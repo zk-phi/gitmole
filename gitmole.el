@@ -1,5 +1,6 @@
 (require 'color)
 (require 'cl-lib)
+(require 'subr-x)
 
 (defconst gitmole-fg-color-saturation 0.5)
 
