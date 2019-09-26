@@ -72,7 +72,7 @@
 
 ;; ---- entrypoint
 
-(defun git-mole--update-header-line-format ()
+(defun gitmole--update-header-line-format ()
   (setq header-line-format (or (get-text-property (point) 'gitmole-header) "")))
 
 (defun gitmole-popup-commit ()
@@ -130,7 +130,7 @@
       (read-only-mode 1)
       (forward-line lineno)
       (recenter)
-      (git-mole--update-header-line-format)
-      (add-hook 'post-command-hook 'git-mole--update-header-line-format nil t))))
+      (gitmole--update-header-line-format)
+      (add-hook 'post-command-hook 'gitmole--update-header-line-format nil t))))
 
 (provide 'gitmole)
