@@ -75,6 +75,23 @@
 (defun git-mole--update-header-line-format ()
   (setq header-line-format (or (get-text-property (point) 'gitmole-header) "")))
 
+(defun gitmole-popup-commit ()
+  (interactive)
+  (let* ((file (or gitmole--file-name
+                   (error "Not a gitmole buffer.")))
+         (default-directory (file-name-directory file))
+         (revision (or (get-text-property (point) 'gitmole-revision)
+                       (error "Revision not found."))))
+    (with-current-buffer (get-buffer-create "*Git Blame Commit*")
+      (read-only-mode 0)
+      (erase-buffer)
+      (save-excursion
+        (insert
+         (shell-command-to-string (format "git show --color=always %s -- %s" revision file))))
+      (ansi-color-apply-on-region (point-min) (point-max))
+      (read-only-mode 1))
+    (select-window (display-buffer "*Git Blame Commit*"))))
+
 (defun gitmole-interactive-blame (&optional revision)
   (interactive)
   (let ((file (or gitmole--file-name (buffer-file-name)))
