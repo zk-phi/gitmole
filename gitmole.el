@@ -5,7 +5,7 @@
 (defconst gitmole-fg-color-saturation 0.5)
 
 (defconst gitmole-fg-color-luminance
-  (+ (cl-caddr (apply 'color-rgb-to-hsl (color-name-to-rgb (face-foreground 'default))))
+  (+ (caddr (apply 'color-rgb-to-hsl (color-name-to-rgb (face-foreground 'default))))
      (if (eq frame-background-mode 'light) 0.05 -0.05)))
 
 (defconst gitmole-fg-color-hue-from 0.5)
