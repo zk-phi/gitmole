@@ -79,32 +79,38 @@
 
 (defun gitmole-popup-commit ()
   (interactive)
-  (let* ((file (or gitmole--file-name
-                   (error "Not a gitmole buffer.")))
-         (default-directory (file-name-directory file))
-         (revision (or (get-text-property (point) 'gitmole-revision)
-                       (error "Revision not found."))))
-    (with-current-buffer (get-buffer-create "*Git Blame Commit*")
-      (read-only-mode 0)
-      (erase-buffer)
-      (save-excursion
-        (insert
-         (shell-command-to-string (format "git show --color=always %s -- %s" revision file))))
-      (ansi-color-apply-on-region (point-min) (point-max))
-      (read-only-mode 1))
-    (select-window (display-buffer "*Git Blame Commit*"))))
+  (let ((file (or gitmole--file-name (buffer-file-name) (error "Not a file buffer"))))
+    (unless (locate-dominating-file file ".git")
+      (error "Not under a git repo."))
+    (let ((default-directory (file-name-directory file))
+          (revision (read-string
+                     "Revision: "
+                     (or (get-text-property (point) 'gitmole-revision) ""))))
+      (with-current-buffer (get-buffer-create "*Git Blame Commit*")
+        (setq gitmole--file-name file
+              default-directory  (file-name-directory file))
+        (read-only-mode 0)
+        (erase-buffer)
+        (save-excursion
+          (insert
+           (shell-command-to-string (format "git show --color=always %s" revision))))
+        (ansi-color-apply-on-region (point-min) (point-max))
+        (when (looking-at "commit \\([0-9a-f]+\\)$")
+          (put-text-property (point-min) (point-max) 'gitmole-revision (match-string 1)))
+        (read-only-mode 1))
+      (select-window (display-buffer "*Git Blame Commit*")))))
 
-(defun gitmole-interactive-blame (&optional revision)
+(defun gitmole-interactive-blame ()
   (interactive)
-  (let ((file (or gitmole--file-name (buffer-file-name)))
-        (lineno (line-number-at-pos nil t)))
-    (unless file
-      (error "Not a file buffer."))
+  (let ((file (or gitmole--file-name (buffer-file-name) (error "Not a file buffer."))))
     (unless (locate-dominating-file file ".git")
       (error "Not under a git repo."))
     (let* ((default-directory (file-name-directory file))
-           (revision (or revision (get-text-property (point) 'gitmole-revision)))
-           (revision (if revision (concat revision "^") "HEAD"))
+           (lineno (line-number-at-pos nil t))
+           (property-revision (get-text-property (point) 'gitmole-revision))
+           (revision (read-string
+                      "Revision: "
+                      (if property-revision (concat "^" property-revision) "HEAD")))
            (command (format "git blame --line-porcelain %s -- %s" revision file))
            (parsed-lines (gitmole--parse-lines (shell-command-to-string command)))
            last-revision)
