@@ -1,3 +1,5 @@
+;;; -*- lexical-binding: t -*-
+
 (require 'color)
 (require 'cl-lib)
 (require 'subr-x)
