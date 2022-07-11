@@ -110,7 +110,7 @@
            (property-revision (get-text-property (point) 'gitmole-revision))
            (revision (read-string
                       "Revision: "
-                      (if property-revision (concat "^" property-revision) "HEAD")))
+                      (if property-revision (concat property-revision "~1") "HEAD")))
            (command (format "git blame --line-porcelain %s -- %s" revision file))
            (parsed-lines (gitmole--parse-lines (shell-command-to-string command)))
            last-revision)
